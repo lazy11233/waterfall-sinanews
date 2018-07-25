@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="./css/waterfall-lazyload-ajax.css">
+    <style>
+        html,
+        body,
+        ul,
+        li,
+        p,
+        div {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        ul,
+        li {
+            list-style: none;
+        }
+
+        div.container {
+            width: 900px;
+            margin: 0 auto;
+        }
+
+        .clear::after {
+            content: "";
+            display: block;
+            clear: both;
+        }
+
+        li.hide {
+            display: none;
+        }
+
+        #pic-ct {
+            position: relative;
+        }
+
+        body {
+            background-color: #fff;
+            font: 16px/1.5 Arial;
+        }
+
+        #pic-ct .item {
+            position: absolute;
+            border: 1px solid #dfdfdf;
+            box-shadow: 2px 2px 2px #e8e8e8, -2px -2px 2px #e8e8e8;
+            width: 280px;
+            margin: 10px;
+            padding: 0 0 10px 0;
+        }
+
+        #pic-ct .item img {
+            width: 260px;
+            margin: 10px;
+        }
+
+        #pic-ct .item .header {
+            height: 25px;
+            margin: 0 12px;
+            border-bottom: 1px solid #dbdbdb;
+            /* text-align:  center; */
+        }
+
+        #pic-ct .item .desp {
+            font: 12px/1.8 Arial;
+            margin: 10px 15px 0;
+            color: #777371;
+        }
+
+        #load{
+            visibility: hidden;
+            height: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="ct-waterfall">
+            <ul id="pic-ct" class="clearfix">
+                <!-- <li class="item">
+                    <a href="javascript:void(0)">
+                        <img src="http://n.sinaimg.cn/tech/transform/200/w600h400/20180722/6jeY-hfqtahi6512271.jpg" alt="">
+                    </a>
+                    <h4 class="header">稻田里种出“小猪佩奇”</h4>
+                    <p class="desp">近日，在安徽省黄山市歙县溪头镇蓝田村，不同颜色的水稻种植出来的“小猪佩奇”、“凯蒂猫”创意水稻图案呈现出别致的田园风情。</p>
+                </li> -->
+                <li class="item hide"></li>
+            </ul>
+        </div>
+        <div id="load">我是看不见的元素</div>
+    </div>
+
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script>
+        /**
+         * @author LiuZhao
+         * 使用sina的新闻api实现的瀑布流展示和懒加载
+         */
+
+        /*
+        1. 获取数据
+        2. 把数据变成DOM，通过瀑布流的方式放到页面上
+        3. 当页面滚动到底部的时候，循环执行上面3步。
+        */
+
+        var curPage = 1;
+        var perPageCount = 10;
+        var colSumHeight = [];
+        var nodeWidth = $(".item").outerWidth(true);
+        var colNum = Math.floor($("#pic-ct").width() / nodeWidth);
+        for (var i = 0; i < colNum; i++) {
+            colSumHeight[i] = 0;
+        }
+        var isDataArrive = true;
+
+        start();
+
+        function start() {
+            getData(function (newsList) {
+
+                isDataArrive = true;
+                $.each(newsList, function (ids, news) {
+                    var $node = getNode(news);
+                    $node.find("img").on("load", function () {
+                        $("#pic-ct").append($node);
+                        console.log($node.outerWidth(true));
+                        waterFallPlace($node);
+                    })
+                });
+            });
+            isDataArrive = false;
+        }
+
+        $(window).on("scroll", function () {
+            if (!isDataArrive) {
+                return;
+            }
+            if (isVisible($("#load"))) {
+                start();
+            }
+        })
+
+
+        function isVisible($target) {
+            var scrollH = $(window).scrollTop();
+            var winH = $(window).height();
+            var top = $target.offset().top;
+            return top < winH + scrollH;
+        }
+
+        function getNode(news) {
+            var tpl = "";
+            tpl += "<li class='item'>";
+            tpl += "<a href='" + news.url + "' class='link'><img src='" + news.img_url + "' alt=''></a>";
+            tpl += "<h4 class='header'>" + news.short_name + "</h4>";
+            tpl += "<p class='desp'>" + news.short_intro + "</p>";
+            tpl += "</li>"
+            return $(tpl);
+        }
+
+        function getData(callback) {
+            $.ajax({
+                url: "http://platform.sina.com.cn/slide/album_tech",
+                dataType: "jsonp",
+                jsonp: "jsoncallback",
+                data: {
+                    app_key: "1271687855",
+                    num: perPageCount,
+                    page: curPage
+                },
+                success: function (rlt) {
+                    callback(rlt.data);
+                    curPage++;
+                },
+                error: function (e) {
+                    console.log(e);
+                }
+            });
+        }
+
+
+        function waterFallPlace($nodes) {
+            $nodes.each(function () {
+                var $cur = $(this);
+                var idx = 0;
+                var minHeight = colSumHeight[0];
+                for (var i = 0; i < colSumHeight.length; i++) {
+                    if (colSumHeight[i] < minHeight) {
+                        idx = i;
+                        minHeight = colSumHeight[i];
+                    }
+                }
+                $cur.css({
+                    left: nodeWidth * idx,
+                    top: minHeight,
+                    opacity: 1
+                });
+                // console.log(window.getComputedStyle($cur[0]).height);
+                colSumHeight[idx] = $cur.outerHeight(true) + colSumHeight[idx];
+                $('#pic-ct').height(Math.max.apply(null, colSumHeight));
+            })
+        }
+    </script>
+</body>
+
+</html>
