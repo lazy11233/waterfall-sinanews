@@ -2,7 +2,7 @@
 
 
 
-> [预览地址](http://book.jirengu.com/jirengu-inc/js-works/waterfall/waterfull-lazyload-ajax.html)
+> [预览地址](https://lazy11233.github.io/waterfall-sinanews/waterfall-lazyload-ajax.html)
 
 
 ### 懒加载原理
